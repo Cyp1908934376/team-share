@@ -1,0 +1,301 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// User Model
+model User {
+  id          String   @id @default(uuid())
+  username    String   @unique @db.VarChar(50)
+  email       String   @unique @db.VarChar(255)
+  displayName String?  @map("display_name") @db.VarChar(100)
+  avatarUrl   String?  @map("avatar_url")
+  passwordHash String  @map("password_hash")
+  role        String   @default("user") @db.VarChar(20)
+  preferences Json     @default("{}")
+
+  lastLoginAt DateTime? @map("last_login_at")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  // Relations
+  ownedResources    Resource[]        @relation("ResourceOwner")
+  collaboratedResources Resource[]    @relation("ResourceCollaborator")
+  versions          Version[]
+  teamMemberships   TeamMember[]
+  stars             Star[]
+  auditLogs         AuditLog[]
+  notifications     Notification[]
+
+  @@map("users")
+}
+
+// Team Model
+model Team {
+  id          String   @id @default(uuid())
+  name        String   @db.VarChar(100)
+  slug        String   @unique @db.VarChar(100)
+  description String?
+  avatarUrl   String?  @map("avatar_url")
+  settings    Json     @default("{}")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  members       TeamMember[]
+  resources     Resource[]
+  environments  Environment[]
+  workflows     Workflow[]
+
+  @@map("teams")
+}
+
+// Team Member Model
+model TeamMember {
+  id       String   @id @default(uuid())
+  userId   String   @map("user_id")
+  teamId   String   @map("team_id")
+  role     String   @default("member") @db.VarChar(20)
+
+  joinedAt DateTime @default(now()) @map("joined_at")
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  team Team @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, teamId])
+  @@map("team_members")
+}
+
+// Resource Model
+model Resource {
+  id          String   @id @default(uuid())
+  type        String   @db.VarChar(50)
+  name        String   @db.VarChar(200)
+  slug        String   @db.VarChar(200)
+  description String?
+  content     Json?
+  metadata    Json     @default("{}")
+  tags        String[] @default([])
+  category    String?  @db.VarChar(100)
+  visibility  String   @default("team") @db.VarChar(20)
+
+  ownerId String @map("owner_id")
+  teamId  String? @map("team_id")
+
+  version     String   @default("1.0.0") @db.VarChar(20)
+  status      String   @default("draft") @db.VarChar(20)
+  downloads   Int      @default(0)
+  starCount   Int      @default(0) @map("stars")
+
+  publishedAt DateTime? @map("published_at")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  // Relations
+  owner        User       @relation("ResourceOwner", fields: [ownerId], references: [id])
+  collaborators User[]    @relation("ResourceCollaborator")
+  team         Team?      @relation(fields: [teamId], references: [id])
+  versions     Version[]
+  stars        Star[]
+
+  @@unique([type, slug])
+  @@index([type])
+  @@index([ownerId])
+  @@index([teamId])
+  @@index([status])
+  @@index([tags], type: Gin)
+  @@map("resources")
+}
+
+// Star (Favorite) Model
+model Star {
+  id         String   @id @default(uuid())
+  userId     String   @map("user_id")
+  resourceId String   @map("resource_id")
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  // Relations
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  resource Resource @relation(fields: [resourceId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, resourceId])
+  @@index([userId])
+  @@index([resourceId])
+  @@map("stars")
+}
+
+// Version Model
+model Version {
+  id           String   @id @default(uuid())
+  resourceId   String   @map("resource_id")
+  version      String   @db.VarChar(20)
+  tag          String?  @db.VarChar(50)
+  changelog    String?
+  content      Json?
+  contentHash  String?  @map("content_hash") @db.VarChar(64)
+  dependencies Json     @default("[]")
+
+  authorId String @map("author_id")
+  status   String @default("draft") @db.VarChar(20)
+
+  publishedAt DateTime? @map("published_at")
+  createdAt   DateTime  @default(now()) @map("created_at")
+
+  // Relations
+  resource Resource @relation(fields: [resourceId], references: [id], onDelete: Cascade)
+  author   User     @relation(fields: [authorId], references: [id])
+
+  @@unique([resourceId, version])
+  @@index([resourceId])
+  @@map("versions")
+}
+
+// Environment Model
+model Environment {
+  id          String   @id @default(uuid())
+  name        String   @db.VarChar(100)
+  displayName String?  @map("display_name") @db.VarChar(100)
+  description String?
+
+  teamId String? @map("team_id")
+
+  variables    Json @default("{}")
+  secrets      Json @default("{}")
+  dependencies Json @default("{}")
+
+  status String @default("active") @db.VarChar(20)
+  health Json   @default("{}")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  team       Team?                @relation(fields: [teamId], references: [id])
+  snapshots  EnvironmentSnapshot[]
+
+  @@index([teamId])
+  @@map("environments")
+}
+
+// Workflow Model
+model Workflow {
+  id          String   @id @default(uuid())
+  name        String   @db.VarChar(200)
+  description String?
+  version     String   @default("1.0.0") @db.VarChar(20)
+
+  triggerConfig Json @default("{}")
+  nodes         Json @default("[]")
+  edges         Json @default("[]")
+  variables     Json @default("{}")
+
+  timeout     Int  @default(3600)
+  retryPolicy Json @default("{}")
+
+  teamId String? @map("team_id")
+  status String @default("draft") @db.VarChar(20)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  team       Team?              @relation(fields: [teamId], references: [id])
+  executions WorkflowExecution[]
+
+  @@index([teamId])
+  @@map("workflows")
+}
+
+// Workflow Execution Model
+model WorkflowExecution {
+  id         String @id @default(uuid())
+  workflowId String @map("workflow_id")
+  status     String @default("pending") @db.VarChar(20)
+  trigger    String? @db.VarChar(50)
+
+  inputs          Json @default("{}")
+  outputs         Json @default("{}")
+  nodeExecutions  Json @default("[]")
+  logs            Json @default("[]")
+
+  startedAt  DateTime? @map("started_at")
+  finishedAt DateTime? @map("finished_at")
+  duration   Int?
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  // Relations
+  workflow Workflow @relation(fields: [workflowId], references: [id])
+
+  @@index([workflowId])
+  @@map("workflow_executions")
+}
+
+// Environment Snapshot Model
+model EnvironmentSnapshot {
+  id            String   @id @default(uuid())
+  environmentId String   @map("environment_id")
+  name          String   @db.VarChar(100)
+  description   String?
+  snapshot      Json     // Environment state at snapshot time
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  // Relations
+  environment Environment @relation(fields: [environmentId], references: [id], onDelete: Cascade)
+
+  @@index([environmentId])
+  @@map("environment_snapshots")
+}
+
+// Audit Log Model
+model AuditLog {
+  id           String   @id @default(uuid())
+  userId       String   @map("user_id")
+  action       String   @db.VarChar(50)
+  resourceType String?  @map("resource_type") @db.VarChar(50)
+  resourceId   String?  @map("resource_id")
+  details      Json     @default("{}")
+  ipAddress    String?  @map("ip_address")
+  userAgent    String?  @map("user_agent")
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  // Relations
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
+
+// Notification Model
+model Notification {
+  id         String   @id @default(uuid())
+  userId     String   @map("user_id")
+  type       String   @db.VarChar(50)
+  title      String   @db.VarChar(200)
+  message    String?
+  data       Json     @default("{}")
+  read       Boolean  @default(false)
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([read])
+  @@index([createdAt])
+  @@map("notifications")
+}
