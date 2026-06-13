@@ -1,9 +1,9 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { GitBranch, Tag, Clock, User, Plus, Minus, RefreshCw } from 'lucide-react'
+import { GitBranch, Tag, Clock, User, Plus, Minus, RefreshCw, FileText } from 'lucide-react'
 import { api } from '@/services/api'
 import { Card, Badge, Button, Modal } from '@/components/ui'
-import { formatRelativeTime } from '@team-share/shared'
+import { formatRelativeTime, VERSION_STATUS_LABELS } from '@team-share/shared'
 import { cn } from '@/utils/cn'
 
 interface DiffChange {
@@ -24,6 +24,8 @@ export function VersionList() {
   const [selectedResource, setSelectedResource] = useState<string>('')
   const [diffResult, setDiffResult] = useState<DiffResult | null>(null)
   const [showDiff, setShowDiff] = useState(false)
+  const [showVersionDetail, setShowVersionDetail] = useState(false)
+  const [selectedVersion, setSelectedVersion] = useState<any | null>(null)
 
   const { data: resources = [] } = useQuery({
     queryKey: ['resources-for-versions'],
@@ -46,6 +48,11 @@ export function VersionList() {
     } catch (err) {
       console.error('Failed to compare versions:', err)
     }
+  }
+
+  const handleViewVersion = (version: any) => {
+    setSelectedVersion(version)
+    setShowVersionDetail(true)
   }
 
   return (
@@ -173,7 +180,11 @@ export function VersionList() {
                       对比
                     </Button>
                   )}
-                  <Button variant="ghost" size="sm">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleViewVersion(version)}
+                  >
                     查看
                   </Button>
                 </div>
@@ -277,6 +288,120 @@ export function VersionList() {
                     )}
                   </div>
                 ))}
+              </div>
+            )}
+          </div>
+        )}
+      </Modal>
+
+      {/* Version Detail Modal */}
+      <Modal
+        open={showVersionDetail}
+        onClose={() => {
+          setShowVersionDetail(false)
+          setSelectedVersion(null)
+        }}
+        title="版本详情"
+        size="lg"
+      >
+        {selectedVersion && (
+          <div className="space-y-5">
+            {/* Header Info */}
+            <div className="flex items-center gap-3">
+              <div className="rounded-full bg-system-blue/10 p-2">
+                <GitBranch size={20} className="text-system-blue" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="text-title-3 text-label-primary">
+                    v{selectedVersion.version}
+                  </span>
+                  {selectedVersion.tag && (
+                    <Badge variant="primary" size="sm">
+                      <Tag size={10} className="mr-1" />
+                      {selectedVersion.tag}
+                    </Badge>
+                  )}
+                  <Badge
+                    variant={
+                      selectedVersion.status === 'published'
+                        ? 'success'
+                        : selectedVersion.status === 'approved'
+                        ? 'primary'
+                        : selectedVersion.status === 'rejected'
+                        ? 'danger'
+                        : 'default'
+                    }
+                    size="sm"
+                  >
+                    {VERSION_STATUS_LABELS[selectedVersion.status] || selectedVersion.status}
+                  </Badge>
+                </div>
+                <div className="mt-1 flex items-center gap-4 text-caption-1 text-label-tertiary">
+                  <span className="flex items-center gap-1">
+                    <User size={12} />
+                    {selectedVersion.author?.displayName || selectedVersion.author?.username || '未知'}
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <Clock size={12} />
+                    {formatRelativeTime(selectedVersion.createdAt)}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Changelog */}
+            {selectedVersion.changelog && (
+              <div>
+                <h4 className="text-subheadline text-label-primary mb-2">变更说明</h4>
+                <div className="rounded-lg bg-fill-quaternary p-4 text-body text-label-secondary">
+                  {selectedVersion.changelog}
+                </div>
+              </div>
+            )}
+
+            {/* Version Content */}
+            <div>
+              <h4 className="text-subheadline text-label-primary mb-2 flex items-center gap-2">
+                <FileText size={16} className="text-label-tertiary" />
+                版本内容
+              </h4>
+              <pre className="max-h-[400px] overflow-auto rounded-lg bg-fill-quaternary p-4 text-footnote text-label-secondary font-mono whitespace-pre-wrap">
+                {selectedVersion.content
+                  ? typeof selectedVersion.content === 'string'
+                    ? selectedVersion.content
+                    : JSON.stringify(selectedVersion.content, null, 2)
+                  : '(空)'}
+              </pre>
+            </div>
+
+            {/* Metadata */}
+            <div className="grid grid-cols-2 gap-4 text-footnote">
+              <div className="rounded-lg bg-fill-quaternary p-3">
+                <p className="text-label-tertiary">内容哈希</p>
+                <p className="mt-0.5 text-label-primary font-mono text-caption-1 truncate">
+                  {selectedVersion.contentHash || '-'}
+                </p>
+              </div>
+              <div className="rounded-lg bg-fill-quaternary p-3">
+                <p className="text-label-tertiary">发布时间</p>
+                <p className="mt-0.5 text-label-primary">
+                  {selectedVersion.publishedAt
+                    ? formatRelativeTime(selectedVersion.publishedAt)
+                    : '未发布'}
+                </p>
+              </div>
+            </div>
+
+            {/* Dependencies */}
+            {selectedVersion.dependencies && (
+              <div>
+                <h4 className="text-subheadline text-label-primary mb-2">依赖项</h4>
+                <pre className="max-h-[200px] overflow-auto rounded-lg bg-fill-quaternary p-4 text-footnote text-label-secondary font-mono">
+                  {typeof selectedVersion.dependencies === 'string'
+                    ? selectedVersion.dependencies
+                    : JSON.stringify(selectedVersion.dependencies, null, 2)}
+                </pre>
               </div>
             )}
           </div>

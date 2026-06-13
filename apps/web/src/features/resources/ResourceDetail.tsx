@@ -31,6 +31,7 @@ export function ResourceDetail() {
   const [showNewVersion, setShowNewVersion] = useState(false)
   const [newVersion, setNewVersion] = useState({ changelog: '', tag: '' })
   const [copied, setCopied] = useState(false)
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
 
   const { data: resource, isLoading } = useQuery({
     queryKey: ['resource', id],
@@ -111,9 +112,11 @@ export function ResourceDetail() {
   }
 
   const handleDelete = () => {
-    if (window.confirm('确定要删除此资源吗？此操作不可撤销。')) {
-      deleteMutation.mutate()
-    }
+    deleteMutation.mutate()
+  }
+
+  const handleOpenDeleteConfirm = () => {
+    setShowDeleteConfirm(true)
   }
 
   return (
@@ -205,10 +208,12 @@ export function ResourceDetail() {
               发布
             </Button>
           )}
+          <div className="mx-1 h-6 w-px bg-separator" />
           <Button
-            variant="danger"
+            variant="ghost"
+            className="text-system-red hover:bg-system-red/10 active:bg-system-red/20"
             icon={<Trash2 size={16} />}
-            onClick={handleDelete}
+            onClick={handleOpenDeleteConfirm}
             disabled={deleteMutation.isPending}
           >
             删除
@@ -522,6 +527,42 @@ export function ResourceDetail() {
               disabled={createVersionMutation.isPending}
             >
               {createVersionMutation.isPending ? '创建中...' : '创建版本'}
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Delete Confirmation Modal */}
+      <Modal
+        open={showDeleteConfirm}
+        onClose={() => setShowDeleteConfirm(false)}
+        title="删除资源"
+        description="此操作不可撤销，请谨慎操作。"
+        size="sm"
+      >
+        <div className="space-y-4">
+          <div className="rounded-lg bg-system-red/5 border border-system-red/20 p-4">
+            <p className="text-subheadline text-label-primary">
+              确定要删除「{resource.name}」吗？
+            </p>
+            <p className="mt-1 text-footnote text-label-secondary">
+              删除后，该资源的所有版本、收藏记录和相关数据将被永久移除。
+            </p>
+          </div>
+          <div className="flex justify-end gap-3">
+            <Button variant="secondary" onClick={() => setShowDeleteConfirm(false)}>
+              取消
+            </Button>
+            <Button
+              variant="danger"
+              icon={<Trash2 size={16} />}
+              onClick={() => {
+                handleDelete()
+                setShowDeleteConfirm(false)
+              }}
+              disabled={deleteMutation.isPending}
+            >
+              {deleteMutation.isPending ? '删除中...' : '确认删除'}
             </Button>
           </div>
         </div>

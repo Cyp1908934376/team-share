@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import type { Team } from '@team-share/shared'
+import type { Team, User } from '@team-share/shared'
 import {
   ArrowLeft,
   Users,
@@ -13,12 +13,17 @@ import {
   User as UserIcon,
   Eye,
   Trash2,
+  Mail,
+  Calendar,
+  Settings,
+  X,
 } from 'lucide-react'
 import { api } from '@/services/api'
 import { Card, Badge, Button, Input, Modal } from '@/components/ui'
 import { useToast } from '@/components/ui/Toast'
 import { useAuthStore } from '@/stores/authStore'
 import { cn } from '@/utils/cn'
+import { formatRelativeTime } from '@team-share/shared'
 
 const ROLE_CONFIG: Record<string, { label: string; icon: typeof Crown; color: string }> = {
   owner: { label: '所有者', icon: Crown, color: 'text-system-yellow' },
@@ -36,6 +41,9 @@ export function TeamDetail() {
   const [showAddMember, setShowAddMember] = useState(false)
   const [newMemberId, setNewMemberId] = useState('')
   const [newMemberRole, setNewMemberRole] = useState('member')
+  const [showMemberDetail, setShowMemberDetail] = useState(false)
+  const [memberDetail, setMemberDetail] = useState<User | null>(null)
+  const [memberDetailLoading, setMemberDetailLoading] = useState(false)
 
   const { data: team, isLoading } = useQuery<Team>({
     queryKey: ['team', id],
@@ -63,6 +71,20 @@ export function TeamDetail() {
     },
     onError: () => error('添加失败', '请检查用户 ID 是否正确'),
   })
+
+  const handleMemberClick = async (userId: string) => {
+    setMemberDetailLoading(true)
+    setShowMemberDetail(true)
+    try {
+      const user = await api.get<User>(`/users/${userId}`)
+      setMemberDetail(user)
+    } catch (err) {
+      error('加载用户信息失败', '请稍后重试')
+      setShowMemberDetail(false)
+    } finally {
+      setMemberDetailLoading(false)
+    }
+  }
 
   if (isLoading) {
     return (
@@ -158,7 +180,10 @@ export function TeamDetail() {
                 key={member.id}
                 className="flex items-center justify-between rounded-lg border border-separator p-3"
               >
-                <div className="flex items-center gap-3">
+                <button
+                  className="flex items-center gap-3 -m-1 rounded-lg p-1 text-left transition-colors hover:bg-fill-quaternary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-system-blue focus-visible:ring-offset-2"
+                  onClick={() => handleMemberClick(member.userId)}
+                >
                   <div className="flex h-10 w-10 items-center justify-center rounded-full bg-fill-tertiary text-subheadline text-label-secondary">
                     {member.user?.displayName?.[0] || member.user?.username?.[0]?.toUpperCase() || '?'}
                   </div>
@@ -169,11 +194,11 @@ export function TeamDetail() {
                         <span className="ml-2 text-caption-1 text-label-tertiary">(你)</span>
                       )}
                     </p>
-                    <p className="text-caption-1 text-label-tertiary">
+                    <p className="text-caption-1 text-system-blue">
                       @{member.user?.username}
                     </p>
                   </div>
-                </div>
+                </button>
 
                 <div className="flex items-center gap-3">
                   <Badge variant={member.role === 'owner' ? 'warning' : member.role === 'admin' ? 'primary' : 'default'}>
@@ -244,6 +269,103 @@ export function TeamDetail() {
             </Button>
           </div>
         </div>
+      </Modal>
+
+      {/* Member Detail Modal */}
+      <Modal
+        open={showMemberDetail}
+        onClose={() => {
+          setShowMemberDetail(false)
+          setMemberDetail(null)
+        }}
+        title="成员信息"
+        size="sm"
+      >
+        {memberDetailLoading ? (
+          <div className="flex items-center justify-center py-12">
+            <div className="text-label-tertiary">加载中...</div>
+          </div>
+        ) : memberDetail ? (
+          <div className="space-y-5">
+            {/* Avatar & Name */}
+            <div className="flex flex-col items-center gap-3">
+              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-fill-tertiary text-title-2 text-label-secondary">
+                {memberDetail.displayName?.[0] || memberDetail.username?.[0]?.toUpperCase() || '?'}
+              </div>
+              <div className="text-center">
+                <h3 className="text-title-3 text-label-primary">
+                  {memberDetail.displayName || memberDetail.username}
+                </h3>
+                <p className="mt-0.5 text-callout text-system-blue">
+                  @{memberDetail.username}
+                </p>
+              </div>
+            </div>
+
+            {/* Info Items */}
+            <div className="space-y-3 rounded-lg bg-fill-quaternary p-4">
+              <div className="flex items-center gap-3">
+                <Mail size={16} className="text-label-tertiary shrink-0" />
+                <div>
+                  <p className="text-caption-1 text-label-tertiary">邮箱</p>
+                  <p className="text-subheadline text-label-primary">{memberDetail.email}</p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-3">
+                <Shield size={16} className="text-label-tertiary shrink-0" />
+                <div>
+                  <p className="text-caption-1 text-label-tertiary">角色</p>
+                  <Badge variant={memberDetail.role === 'super_admin' ? 'danger' : memberDetail.role === 'admin' ? 'warning' : 'default'}>
+                    {memberDetail.role === 'super_admin' ? '超级管理员' : memberDetail.role === 'admin' ? '管理员' : '用户'}
+                  </Badge>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-3">
+                <Settings size={16} className="text-label-tertiary shrink-0" />
+                <div>
+                  <p className="text-caption-1 text-label-tertiary">偏好设置</p>
+                  <p className="text-subheadline text-label-primary">
+                    主题：{memberDetail.preferences?.theme === 'dark' ? '深色' : memberDetail.preferences?.theme === 'light' ? '浅色' : '跟随系统'}
+                  </p>
+                  {memberDetail.preferences?.language && (
+                    <p className="text-subheadline text-label-primary">
+                      语言：{memberDetail.preferences.language}
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              <div className="flex items-center gap-3">
+                <Calendar size={16} className="text-label-tertiary shrink-0" />
+                <div>
+                  <p className="text-caption-1 text-label-tertiary">注册时间</p>
+                  <p className="text-subheadline text-label-primary">
+                    {formatRelativeTime(memberDetail.createdAt)}
+                  </p>
+                </div>
+              </div>
+
+              {memberDetail.lastLoginAt && (
+                <div className="flex items-center gap-3">
+                  <Calendar size={16} className="text-label-tertiary shrink-0" />
+                  <div>
+                    <p className="text-caption-1 text-label-tertiary">最后登录</p>
+                    <p className="text-subheadline text-label-primary">
+                      {formatRelativeTime(memberDetail.lastLoginAt)}
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        ) : (
+          <div className="flex flex-col items-center justify-center py-12 text-label-tertiary">
+            <X size={24} className="mb-2" />
+            <p>无法加载用户信息</p>
+          </div>
+        )}
       </Modal>
     </div>
   )

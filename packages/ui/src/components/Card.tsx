@@ -25,7 +25,7 @@ export const Card = forwardRef<HTMLDivElement, CardProps>(
             'p-4': padding === 'md',
             'p-6': padding === 'lg',
           },
-          hoverable && 'cursor-pointer hover:shadow-apple-2 active:scale-[0.98]',
+          hoverable && 'cursor-pointer hover:-translate-y-0.5 hover:shadow-apple-2 active:scale-[0.98] active:shadow-apple-1',
           className
         )}
         {...props}
