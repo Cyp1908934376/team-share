@@ -1,9 +1,16 @@
-import { Injectable, NotFoundException } from '@nestjs/common'
+import { Injectable, NotFoundException, Inject, forwardRef } from '@nestjs/common'
 import { PrismaService } from '../../database/prisma/prisma.service'
+import { NotificationsGateway } from './notifications.gateway'
 
 @Injectable()
 export class NotificationsService {
+  private gateway: NotificationsGateway | null = null
+
   constructor(private prisma: PrismaService) {}
+
+  setGateway(gateway: NotificationsGateway) {
+    this.gateway = gateway
+  }
 
   async create(params: {
     userId: string
@@ -12,7 +19,7 @@ export class NotificationsService {
     message?: string
     data?: Record<string, any>
   }) {
-    return this.prisma.notification.create({
+    const notification = await this.prisma.notification.create({
       data: {
         userId: params.userId,
         type: params.type,
@@ -21,6 +28,13 @@ export class NotificationsService {
         data: params.data || {},
       },
     })
+
+    // Emit real-time notification via WebSocket
+    if (this.gateway) {
+      this.gateway.sendNotification(params.userId, notification)
+    }
+
+    return notification
   }
 
   async findAll(userId: string, params?: { read?: boolean; page?: number; pageSize?: number }) {
@@ -52,10 +66,17 @@ export class NotificationsService {
       throw new NotFoundException('通知不存在')
     }
 
-    return this.prisma.notification.update({
+    const updated = await this.prisma.notification.update({
       where: { id },
       data: { read: true },
     })
+
+    // Emit read status via WebSocket
+    if (this.gateway) {
+      this.gateway.sendReadStatus(userId, id)
+    }
+
+    return updated
   }
 
   async markAllAsRead(userId: string) {

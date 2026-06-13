@@ -46,6 +46,15 @@ export class TransformInterceptor<T> implements NestInterceptor<T, WrappedRespon
           return data
         }
 
+        // Arrays: wrap directly, no extra metadata extraction needed
+        if (Array.isArray(data)) {
+          return {
+            code: 0,
+            message: 'success',
+            data,
+          }
+        }
+
         // Extract pagination/extra metadata if present
         const { items, meta, ...extra } = data || {}
 

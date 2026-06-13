@@ -88,7 +88,7 @@ export const Modal = forwardRef<HTMLDivElement, ModalProps>(
               {showCloseButton && (
                 <button
                   onClick={onClose}
-                  className="absolute right-4 top-4 rounded-lg p-1 text-label-tertiary transition-colors hover:bg-fill-quaternary hover:text-label-secondary"
+                  className="absolute right-4 top-4 rounded-lg p-1 text-label-tertiary transition-colors hover:bg-fill-quaternary hover:text-label-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-system-blue focus-visible:ring-offset-2"
                 >
                   <X size={18} />
                 </button>

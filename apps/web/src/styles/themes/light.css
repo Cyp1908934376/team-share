@@ -1,4 +1,4 @@
-/* Apple Light Theme */
+/* Apple Light Theme — CSS Variables (RGB format for Tailwind opacity modifiers) */
 :root {
   /* Background Colors */
   --bg-primary: #FFFFFF;
@@ -23,16 +23,18 @@
   --separator: rgba(60, 60, 67, 0.12);
   --separator-opaque: #C6C6C8;
 
-  /* System Colors */
-  --system-blue: #007AFF;
-  --system-green: #34C759;
-  --system-indigo: #5856D6;
-  --system-orange: #FF9500;
-  --system-pink: #FF2D55;
-  --system-purple: #AF52DE;
-  --system-red: #FF3B30;
-  --system-teal: #5AC8FA;
-  --system-yellow: #FFCC00;
+  /* System Colors — RGB values for Tailwind opacity modifier support
+     Usage in Tailwind: bg-system-blue, text-system-red/70, border-system-green/20, etc.
+  */
+  --system-blue: 0 122 255;
+  --system-green: 52 199 89;
+  --system-indigo: 88 86 214;
+  --system-orange: 255 149 0;
+  --system-pink: 255 45 85;
+  --system-purple: 175 82 222;
+  --system-red: 255 59 48;
+  --system-teal: 90 200 250;
+  --system-yellow: 255 204 0;
 
   /* Backdrop */
   --bg-toolbar: rgba(246, 246, 246, 0.78);

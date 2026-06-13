@@ -1,8 +1,9 @@
 import { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { Package, Eye, EyeOff } from 'lucide-react'
-import { Button, Input } from '@/components/ui'
+import { Button, Input, Modal } from '@/components/ui'
 import { useAuthStore } from '@/stores/authStore'
+import { api } from '@/services/api'
 
 export function LoginPage() {
   const navigate = useNavigate()
@@ -11,6 +12,20 @@ export function LoginPage() {
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
 
+  // Forgot password state
+  const [showForgotModal, setShowForgotModal] = useState(false)
+  const [forgotEmail, setForgotEmail] = useState('')
+  const [forgotLoading, setForgotLoading] = useState(false)
+  const [forgotMessage, setForgotMessage] = useState('')
+  const [forgotError, setForgotError] = useState('')
+
+  // Reset password state
+  const [showResetModal, setShowResetModal] = useState(false)
+  const [resetToken, setResetToken] = useState('')
+  const [newPassword, setNewPassword] = useState('')
+  const [resetLoading, setResetLoading] = useState(false)
+  const [resetMessage, setResetMessage] = useState('')
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     try {
@@ -18,6 +33,50 @@ export function LoginPage() {
       navigate('/')
     } catch {
       // Error is handled by store
+    }
+  }
+
+  const handleForgotPassword = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setForgotLoading(true)
+    setForgotError('')
+    setForgotMessage('')
+    try {
+      const result = await api.post('/auth/forgot-password', { email: forgotEmail })
+      setForgotMessage(result.message || '重置链接已发送至注册邮箱')
+      if (result.devToken) {
+        setResetToken(result.devToken)
+        setForgotMessage('(开发模式) 重置令牌: ' + result.devToken.substring(0, 20) + '...')
+      }
+    } catch (err: any) {
+      setForgotError(err.message || '发送失败，请重试')
+    } finally {
+      setForgotLoading(false)
+    }
+  }
+
+  const handleResetPassword = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setResetLoading(true)
+    setResetMessage('')
+    try {
+      const result = await api.post('/auth/reset-password', {
+        token: resetToken,
+        newPassword,
+      })
+      setResetMessage(result.message || '密码重置成功')
+      setTimeout(() => {
+        setShowResetModal(false)
+        setShowForgotModal(false)
+        setForgotEmail('')
+        setNewPassword('')
+        setResetToken('')
+        setResetMessage('')
+      }, 2000)
+    } catch (err: any) {
+      setResetMessage(err.message || '重置失败，请检查令牌是否正确')
+    } finally {
+      setResetLoading(false)
     }
   }
 
@@ -98,9 +157,13 @@ export function LoginPage() {
                 />
                 <span className="text-footnote text-label-secondary">记住我</span>
               </label>
-              <a href="#" className="text-footnote text-system-blue hover:underline">
+              <button
+                type="button"
+                onClick={() => setShowForgotModal(true)}
+                className="text-footnote text-system-blue hover:underline"
+              >
                 忘记密码？
-              </a>
+              </button>
             </div>
 
             <Button
@@ -130,6 +193,98 @@ export function LoginPage() {
           </div>
         </div>
       </div>
+
+      {/* Forgot Password Modal */}
+      <Modal
+        open={showForgotModal}
+        onClose={() => { setShowForgotModal(false); setForgotMessage(''); setForgotError('') }}
+        title="找回密码"
+      >
+        <form onSubmit={handleForgotPassword} className="space-y-4">
+          <p className="text-callout text-label-secondary">
+            输入您的注册邮箱，我们将发送密码重置链接。
+          </p>
+          {forgotError && (
+            <div className="rounded-lg bg-system-red/10 p-3 text-footnote text-system-red">
+              {forgotError}
+            </div>
+          )}
+          {forgotMessage && (
+            <div className="rounded-lg bg-system-green/10 p-3 text-footnote text-system-green">
+              {forgotMessage}
+            </div>
+          )}
+          <Input
+            label="注册邮箱"
+            type="email"
+            placeholder="请输入注册邮箱"
+            value={forgotEmail}
+            onChange={(e) => setForgotEmail(e.target.value)}
+            required
+          />
+          <div className="flex gap-3 pt-2">
+            <Button type="submit" loading={forgotLoading} disabled={!forgotEmail}>
+              发送重置链接
+            </Button>
+            {resetToken && (
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => setShowResetModal(true)}
+              >
+                已有令牌？直接重置
+              </Button>
+            )}
+          </div>
+        </form>
+      </Modal>
+
+      {/* Reset Password Modal */}
+      <Modal
+        open={showResetModal}
+        onClose={() => setShowResetModal(false)}
+        title="重置密码"
+      >
+        <form onSubmit={handleResetPassword} className="space-y-4">
+          {resetMessage && (
+            <div className={cn(
+              'rounded-lg p-3 text-footnote',
+              resetMessage.includes('成功')
+                ? 'bg-system-green/10 text-system-green'
+                : 'bg-system-red/10 text-system-red',
+            )}>
+              {resetMessage}
+            </div>
+          )}
+          <Input
+            label="重置令牌"
+            placeholder="输入邮件中的重置令牌"
+            value={resetToken}
+            onChange={(e) => setResetToken(e.target.value)}
+            required
+          />
+          <Input
+            label="新密码"
+            type="password"
+            placeholder="请输入新密码（至少6位）"
+            value={newPassword}
+            onChange={(e) => setNewPassword(e.target.value)}
+            required
+          />
+          <Button
+            type="submit"
+            className="w-full"
+            loading={resetLoading}
+            disabled={!resetToken || newPassword.length < 6}
+          >
+            重置密码
+          </Button>
+        </form>
+      </Modal>
     </div>
   )
+}
+
+function cn(...classes: (string | boolean | undefined)[]): string {
+  return classes.filter(Boolean).join(' ')
 }

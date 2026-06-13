@@ -11,6 +11,7 @@ import {
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger'
 import { VersionsService } from './versions.service'
 import { CreateVersionDto } from './dto'
+import { SubmitReviewDto, ApprovalDto } from './dto/approval.dto'
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard'
 
 @ApiTags('versions')
@@ -57,5 +58,53 @@ export class VersionsController {
     @Query('to') toId: string
   ) {
     return this.versionsService.diff(fromId, toId)
+  }
+
+  @Post(':id/submit-review')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: '提交版本审核' })
+  async submitForReview(
+    @Param('id') id: string,
+    @Request() req,
+    @Body() dto: SubmitReviewDto,
+  ) {
+    return this.versionsService.submitForReview(id, req.user.id)
+  }
+
+  @Post(':id/approve')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: '批准版本' })
+  async approve(
+    @Param('id') id: string,
+    @Request() req,
+    @Body() dto: ApprovalDto,
+  ) {
+    return this.versionsService.approve(id, req.user.id, dto.comment)
+  }
+
+  @Post(':id/reject')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: '拒绝版本' })
+  async reject(
+    @Param('id') id: string,
+    @Request() req,
+    @Body() dto: ApprovalDto,
+  ) {
+    return this.versionsService.reject(id, req.user.id, dto.comment)
+  }
+
+  @Post(':id/rollback')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: '回滚至指定版本' })
+  async rollback(
+    @Param('resourceId') resourceId: string,
+    @Param('id') id: string,
+    @Request() req,
+  ) {
+    return this.versionsService.rollback(resourceId, id, req.user.id)
   }
 }

@@ -8,10 +8,16 @@ import {
   Param,
   Query,
   UseGuards,
+  UseInterceptors,
+  UploadedFile,
   Request,
+  Res,
+  StreamableFile,
 } from '@nestjs/common'
-import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger'
+import { FileInterceptor } from '@nestjs/platform-express'
+import { ApiTags, ApiOperation, ApiBearerAuth, ApiConsumes } from '@nestjs/swagger'
 import { ResourcesService } from './resources.service'
+import { StorageService } from '../../common/storage/storage.service'
 import { CreateResourceDto, UpdateResourceDto, QueryResourceDto } from './dto'
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard'
 import { AuditAction } from '../audit-logs/audit-log.interceptor'
@@ -19,7 +25,10 @@ import { AuditAction } from '../audit-logs/audit-log.interceptor'
 @ApiTags('resources')
 @Controller('resources')
 export class ResourcesController {
-  constructor(private readonly resourcesService: ResourcesService) {}
+  constructor(
+    private readonly resourcesService: ResourcesService,
+    private readonly storageService: StorageService,
+  ) {}
 
   @Get()
   @ApiOperation({ summary: '获取资源列表' })
@@ -82,9 +91,66 @@ export class ResourcesController {
   }
 
   @Post(':id/download')
-  @ApiOperation({ summary: '下载资源' })
+  @ApiOperation({ summary: '下载资源（增加下载计数）' })
   async download(@Param('id') id: string) {
     return this.resourcesService.download(id)
+  }
+
+  @Post(':id/upload')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @UseInterceptors(FileInterceptor('file'))
+  @ApiConsumes('multipart/form-data')
+  @ApiOperation({ summary: '上传资源文件到 MinIO' })
+  async uploadFile(
+    @Param('id') id: string,
+    @Request() req,
+    @UploadedFile() file: Express.Multer.File,
+  ) {
+    const userId = req.user.id
+    const objectName = `resources/${id}/${file.originalname}`
+    await this.storageService.uploadFile('team-share', objectName, file.buffer, {
+      'Content-Type': file.mimetype,
+      'X-Amz-Meta-ResourceId': id,
+      'X-Amz-Meta-UploadedBy': userId,
+    })
+
+    // Update resource content with file reference
+    await this.resourcesService.update(id, userId, {
+      content: { file: objectName, originalName: file.originalname, size: file.size },
+    } as any)
+
+    return { success: true, objectName, size: file.size }
+  }
+
+  @Get(':id/file')
+  @ApiOperation({ summary: '获取资源文件下载链接' })
+  async getFileUrl(@Param('id') id: string) {
+    const resource = await this.resourcesService.findById(id)
+    const content = resource.content as Record<string, any> | null
+    if (!content?.file) {
+      return { url: null }
+    }
+
+    const url = await this.storageService.getPresignedUrl('team-share', content.file, 3600)
+    return { url }
+  }
+
+  @Get(':id/file/download')
+  @ApiOperation({ summary: '直接下载资源文件' })
+  async downloadFile(@Param('id') id: string, @Res() res: any) {
+    const resource = await this.resourcesService.findById(id)
+    const content = resource.content as Record<string, any> | null
+    if (!content?.file) {
+      return res.status(404).json({ code: 404, message: '未找到文件' })
+    }
+
+    const fileBuffer = await this.storageService.getFile('team-share', content.file)
+    res.set({
+      'Content-Type': content.mimetype || 'application/octet-stream',
+      'Content-Disposition': `attachment; filename="${content.originalName || 'download'}"`,
+    })
+    res.send(fileBuffer)
   }
 
   @Post(':id/publish')

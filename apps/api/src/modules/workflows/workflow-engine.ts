@@ -159,6 +159,12 @@ export class WorkflowEngine {
         case 'parallel':
           output = await this.executeParallelNode(node, allNodes, edges, adjacency, context)
           break
+        case 'loop':
+          output = await this.executeLoopNode(node, allNodes, edges, adjacency, context)
+          break
+        case 'subprocess':
+          output = await this.executeSubprocessNode(node, context)
+          break
         default:
           this.log(context, 'warn', `未知节点类型: ${node.type}`, node.id)
           output = {}
@@ -170,7 +176,7 @@ export class WorkflowEngine {
       await this.updateNodeExecution(context.executionId, node.id, 'success')
 
       // Find and execute next nodes (skip for parallel node, it handles its own children)
-      if (node.type !== 'parallel') {
+      if (!['parallel', 'loop', 'subprocess'].includes(node.type)) {
         const nextNodeIds = adjacency.get(node.id) || []
 
         for (const nextNodeId of nextNodeIds) {
@@ -367,6 +373,172 @@ export class WorkflowEngine {
     }
 
     return { parallel: true, results }
+  }
+
+  private async executeLoopNode(
+    node: NodeDefinition,
+    allNodes: NodeDefinition[],
+    edges: EdgeDefinition[],
+    adjacency: Map<string, string[]>,
+    context: ExecutionContext
+  ) {
+    const { iterations, collection, mode = 'sequential' } = node.config || {}
+    const nextNodeIds = adjacency.get(node.id) || []
+
+    // Determine loop count
+    let loopCount = 0
+    let collectionItems: any[] = []
+    if (iterations !== undefined && iterations > 0) {
+      loopCount = iterations
+    } else if (collection) {
+      // Resolve collection from variables or outputs
+      const resolved = this.resolveJsonPath(collection, context)
+      if (Array.isArray(resolved)) {
+        collectionItems = resolved
+        loopCount = collectionItems.length
+      }
+    }
+
+    this.log(context, 'info', `循环开始，共 ${loopCount} 次迭代`, node.id)
+
+    const results: any[] = []
+
+    for (let i = 0; i < loopCount; i++) {
+      if (context.aborted) break
+
+      // Set loop context variables
+      context.variables.loopIndex = i
+      if (collectionItems.length > 0) {
+        context.variables.loopItem = collectionItems[i]
+      }
+
+      this.log(context, 'info', `循环迭代 ${i + 1}/${loopCount}`, node.id)
+
+      const iterationOutputs: Record<string, any> = {}
+
+      if (mode === 'parallel' && nextNodeIds.length > 0) {
+        // Execute children in parallel for this iteration
+        const promises = nextNodeIds.map(async (nextNodeId) => {
+          const nextNode = allNodes.find((n) => n.id === nextNodeId)
+          if (!nextNode) return
+          await this.executeNode(nextNode, allNodes, edges, adjacency, context)
+          iterationOutputs[nextNodeId] = context.nodeOutputs[nextNodeId]
+        })
+        await Promise.all(promises)
+      } else {
+        // Sequential execution
+        for (const nextNodeId of nextNodeIds) {
+          if (context.aborted) break
+          const nextNode = allNodes.find((n) => n.id === nextNodeId)
+          if (!nextNode) continue
+
+          const edge = edges.find((e) => e.source === node.id && e.target === nextNodeId)
+          if (edge?.condition) {
+            if (!this.evaluateCondition(edge.condition, context)) continue
+          }
+
+          await this.executeNode(nextNode, allNodes, edges, adjacency, context)
+          iterationOutputs[nextNodeId] = context.nodeOutputs[nextNodeId]
+        }
+      }
+
+      results.push({ iteration: i, outputs: iterationOutputs })
+    }
+
+    // Find and execute nodes after the loop
+    for (const nextNodeId of nextNodeIds) {
+      if (context.aborted) break
+      const nextNode = allNodes.find((n) => n.id === nextNodeId)
+      if (!nextNode) continue
+      // Only execute if node wasn't a loop child (children handled above)
+      // For simplicity, loop children are direct adjacency nodes
+    }
+
+    this.log(context, 'info', `循环完成，共 ${results.length} 次迭代`, node.id)
+
+    // Clean up loop-specific variables
+    delete context.variables.loopIndex
+    delete context.variables.loopItem
+
+    return { iterations: loopCount, results }
+  }
+
+  private async executeSubprocessNode(
+    node: NodeDefinition,
+    context: ExecutionContext
+  ) {
+    const { workflowId: subWorkflowId, inputMapping = {}, outputMapping = {} } = node.config || {}
+
+    if (!subWorkflowId) {
+      this.log(context, 'error', '未指定子工作流 ID', node.id)
+      return { skipped: true, reason: '未指定子工作流 ID' }
+    }
+
+    this.log(context, 'info', `执行子工作流: ${subWorkflowId}`, node.id)
+
+    // Load sub-workflow
+    const subWorkflow = await this.prisma.workflow.findUnique({
+      where: { id: subWorkflowId },
+    })
+
+    if (!subWorkflow) {
+      this.log(context, 'error', `子工作流不存在: ${subWorkflowId}`, node.id)
+      return { skipped: true, reason: '子工作流不存在' }
+    }
+
+    // Map inputs
+    const subVariables: Record<string, any> = {}
+    for (const [targetKey, sourcePath] of Object.entries(inputMapping)) {
+      subVariables[targetKey] = this.resolveJsonPath(sourcePath as string, context)
+    }
+
+    // Create sub-execution record
+    const subExecution = await this.prisma.workflowExecution.create({
+      data: {
+        workflowId: subWorkflowId,
+        status: 'running',
+        trigger: 'subprocess',
+        inputs: subVariables,
+        startedAt: new Date(),
+      },
+    })
+
+    // Execute sub-workflow recursively
+    const subResult = await this.execute(
+      subWorkflowId,
+      subExecution.id,
+      (subWorkflow.nodes as any[]) || [],
+      (subWorkflow.edges as any[]) || [],
+      { ...(subWorkflow.variables as Record<string, any>), ...subVariables }
+    )
+
+    // Map outputs back
+    const mappedOutputs: Record<string, any> = {}
+    for (const [targetKey, sourceKey] of Object.entries(outputMapping)) {
+      if (subResult.outputs && sourceKey as string in subResult.outputs) {
+        mappedOutputs[targetKey] = subResult.outputs[sourceKey as string]
+      }
+    }
+
+    return {
+      subprocess: true,
+      subWorkflowId,
+      subExecutionId: subExecution.id,
+      result: subResult,
+      mappedOutputs,
+    }
+  }
+
+  private resolveJsonPath(path: string, context: ExecutionContext): any {
+    if (!path) return undefined
+    // Support simple paths like "variables.foo", "outputs.nodeId.bar"
+    const parts = path.split('.')
+    let current: any = context
+    for (const part of parts) {
+      if (current === null || current === undefined) return undefined
+      current = current[part]
+    }
+    return current
   }
 
   private async executeConditionNode(node: NodeDefinition, context: ExecutionContext) {

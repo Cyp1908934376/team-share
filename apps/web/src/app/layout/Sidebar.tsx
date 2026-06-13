@@ -182,17 +182,17 @@ export function Sidebar({ collapsed = false, onToggleCollapse }: SidebarProps) {
         </AnimatePresence>
       </nav>
 
-      {/* Bottom Actions */}
-      <div className="border-t border-separator p-3">
+      {/* Bottom Actions — Apple-style subtle */}
+      <div className="border-t border-separator p-2">
         <button
           onClick={() => navigate('/resources/new')}
           className={cn(
-            'flex w-full items-center justify-center gap-2 rounded-lg bg-system-blue px-4 py-2 text-subheadline font-medium text-white transition-all hover:bg-system-blue/90 active:scale-[0.98]',
-            collapsed && 'px-2'
+            'flex w-full items-center gap-2 rounded-lg px-3 py-2 text-subheadline text-label-secondary transition-colors hover:bg-fill-quaternary hover:text-label-primary',
+            collapsed && 'justify-center px-0'
           )}
           title={collapsed ? '新建资源' : undefined}
         >
-          <Plus size={16} className="flex-shrink-0" />
+          <Plus size={18} className="flex-shrink-0" />
           <AnimatePresence>
             {!collapsed && (
               <motion.span

@@ -42,7 +42,7 @@ export function Pagination({ page, totalPages, onPageChange, className }: Pagina
       <button
         onClick={() => onPageChange(page - 1)}
         disabled={page <= 1}
-        className="flex h-8 w-8 items-center justify-center rounded-lg text-label-secondary transition-colors hover:bg-fill-quaternary hover:text-label-primary disabled:cursor-not-allowed disabled:opacity-40"
+        className="flex h-8 w-8 items-center justify-center rounded-lg text-label-secondary transition-colors hover:bg-fill-quaternary hover:text-label-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-system-blue focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-40"
         aria-label="Previous page"
       >
         <ChevronLeft size={16} />
@@ -64,7 +64,7 @@ export function Pagination({ page, totalPages, onPageChange, className }: Pagina
               'flex h-8 min-w-[32px] items-center justify-center rounded-lg px-2 text-subheadline transition-colors',
               p === page
                 ? 'bg-system-blue text-white'
-                : 'text-label-secondary hover:bg-fill-quaternary hover:text-label-primary'
+                : 'text-label-secondary hover:bg-fill-quaternary hover:text-label-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-system-blue focus-visible:ring-offset-2'
             )}
             aria-current={p === page ? 'page' : undefined}
           >
@@ -76,7 +76,7 @@ export function Pagination({ page, totalPages, onPageChange, className }: Pagina
       <button
         onClick={() => onPageChange(page + 1)}
         disabled={page >= totalPages}
-        className="flex h-8 w-8 items-center justify-center rounded-lg text-label-secondary transition-colors hover:bg-fill-quaternary hover:text-label-primary disabled:cursor-not-allowed disabled:opacity-40"
+        className="flex h-8 w-8 items-center justify-center rounded-lg text-label-secondary transition-colors hover:bg-fill-quaternary hover:text-label-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-system-blue focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-40"
         aria-label="Next page"
       >
         <ChevronRight size={16} />

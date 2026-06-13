@@ -7,7 +7,19 @@ export class ResourcesService {
   constructor(private prisma: PrismaService) {}
 
   async findAll(query: QueryResourceDto) {
-    const { type, status, search, tags, page = 1, pageSize = 20 } = query
+    const { type, status, search, tags, page = 1, pageSize = 20, sort = 'updatedAt', order = 'desc' } = query
+
+    // Dynamic sorting with whitelist for safety
+    // Maps frontend sort keys to Prisma field names
+    const sortFieldMap: Record<string, string> = {
+      updatedAt: 'updatedAt',
+      createdAt: 'createdAt',
+      name: 'name',
+      stars: 'starCount',
+      downloads: 'downloads',
+    }
+    const sortField = sortFieldMap[sort] || 'updatedAt'
+    const sortOrder = order === 'asc' ? 'asc' : 'desc'
 
     const where: any = {}
 
@@ -37,7 +49,7 @@ export class ResourcesService {
             select: { stars: true },
           },
         },
-        orderBy: { updatedAt: 'desc' },
+        orderBy: { [sortField]: sortOrder },
         skip: (page - 1) * pageSize,
         take: pageSize,
       }),

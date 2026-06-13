@@ -39,4 +39,18 @@ export class AuthController {
   ) {
     return this.authService.changePassword(req.user.id, body.currentPassword, body.newPassword)
   }
+
+  @Post('forgot-password')
+  @ApiOperation({ summary: '忘记密码 - 发送重置令牌' })
+  async forgotPassword(@Body() body: { email: string }) {
+    return this.authService.forgotPassword(body.email)
+  }
+
+  @Post('reset-password')
+  @ApiOperation({ summary: '重置密码' })
+  async resetPassword(
+    @Body() body: { token: string; newPassword: string }
+  ) {
+    return this.authService.resetPassword(body.token, body.newPassword)
+  }
 }

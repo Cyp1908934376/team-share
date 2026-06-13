@@ -4,6 +4,7 @@ import { ConfigService } from '@nestjs/config'
 import { UnauthorizedException, ConflictException, BadRequestException } from '@nestjs/common'
 import { AuthService } from './auth.service'
 import { PrismaService } from '../../database/prisma/prisma.service'
+import { RedisService } from '../../database/redis/redis.service'
 
 describe('AuthService', () => {
   let service: AuthService
@@ -42,12 +43,21 @@ describe('AuthService', () => {
       get: jest.fn().mockReturnValue('test-secret'),
     }
 
+    const mockRedisService = {
+      get: jest.fn().mockResolvedValue(null),
+      set: jest.fn().mockResolvedValue(undefined),
+      del: jest.fn().mockResolvedValue(undefined),
+      exists: jest.fn().mockResolvedValue(false),
+      isConnected: true,
+    }
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         AuthService,
         { provide: PrismaService, useValue: mockPrisma },
         { provide: JwtService, useValue: mockJwtService },
         { provide: ConfigService, useValue: mockConfigService },
+        { provide: RedisService, useValue: mockRedisService },
       ],
     }).compile()
 

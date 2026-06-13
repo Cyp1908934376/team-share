@@ -23,16 +23,16 @@
   --separator: rgba(84, 84, 88, 0.65);
   --separator-opaque: #38383A;
 
-  /* System Colors */
-  --system-blue: #0A84FF;
-  --system-green: #30D158;
-  --system-indigo: #5E5CE6;
-  --system-orange: #FF9F0A;
-  --system-pink: #FF375F;
-  --system-purple: #BF5AF2;
-  --system-red: #FF453A;
-  --system-teal: #64D2FF;
-  --system-yellow: #FFD60A;
+  /* System Colors — RGB values for Tailwind opacity modifier support */
+  --system-blue: 10 132 255;
+  --system-green: 48 209 88;
+  --system-indigo: 94 92 230;
+  --system-orange: 255 159 10;
+  --system-pink: 255 55 95;
+  --system-purple: 191 90 242;
+  --system-red: 255 69 58;
+  --system-teal: 100 210 255;
+  --system-yellow: 255 214 10;
 
   /* Backdrop */
   --bg-toolbar: rgba(30, 30, 30, 0.78);

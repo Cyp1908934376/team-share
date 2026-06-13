@@ -25,6 +25,8 @@ import {
   CheckCircle,
   XCircle,
   Loader,
+  RefreshCw,
+  Package,
 } from 'lucide-react'
 import { api } from '@/services/api'
 import { Button, Badge, Input, Modal } from '@/components/ui'
@@ -84,11 +86,54 @@ function ConditionNode({ data }: { data: any }) {
   )
 }
 
+function LoopNode({ data }: { data: any }) {
+  return (
+    <div className="rounded-lg bg-system-purple/10 px-4 py-3 shadow-lg border-2 border-dashed border-system-purple/30">
+      <div className="flex items-center gap-2">
+        <span className="text-sm">🔄</span>
+        <span className="text-footnote font-medium text-label-primary">
+          {data.label || '循环'}
+        </span>
+      </div>
+      {data.iterations && (
+        <div className="mt-1 text-caption-2 text-label-tertiary">
+          {data.iterations} 次迭代
+        </div>
+      )}
+      {data.collection && (
+        <div className="mt-1 text-caption-2 text-label-tertiary font-mono truncate max-w-[180px]">
+          {data.collection}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function SubprocessNode({ data }: { data: any }) {
+  return (
+    <div className="rounded-lg bg-system-teal/10 px-4 py-3 shadow-lg border-2 border-dashed border-system-teal/30">
+      <div className="flex items-center gap-2">
+        <span className="text-sm">📦</span>
+        <span className="text-footnote font-medium text-label-primary">
+          {data.label || '子流程'}
+        </span>
+      </div>
+      {data.workflowId && (
+        <div className="mt-1 text-caption-2 text-label-tertiary font-mono truncate max-w-[180px]">
+          ID: {data.workflowId.substring(0, 8)}...
+        </div>
+      )}
+    </div>
+  )
+}
+
 const nodeTypes = {
   start: StartNode,
   end: EndNode,
   task: TaskNode,
   condition: ConditionNode,
+  loop: LoopNode,
+  subprocess: SubprocessNode,
 }
 
 const NODE_TEMPLATES = [
@@ -96,6 +141,8 @@ const NODE_TEMPLATES = [
   { type: 'end', label: '结束', icon: XCircle, color: 'text-system-red' },
   { type: 'task', label: '任务', icon: Zap, color: 'text-system-blue' },
   { type: 'condition', label: '条件', icon: GitBranch, color: 'text-system-orange' },
+  { type: 'loop', label: '循环', icon: RefreshCw, color: 'text-system-purple' },
+  { type: 'subprocess', label: '子流程', icon: Package, color: 'text-system-teal' },
 ]
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; icon: typeof CheckCircle }> = {

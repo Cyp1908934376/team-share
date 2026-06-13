@@ -166,4 +166,104 @@ export class VersionsService {
       },
     })
   }
+
+  async submitForReview(id: string, userId: string) {
+    const version = await this.findById(id)
+
+    if (version.authorId !== userId) {
+      throw new ForbiddenException('无权提交审核')
+    }
+
+    if (version.status !== 'draft') {
+      throw new ForbiddenException('只有草稿状态的版本可以提交审核')
+    }
+
+    return this.prisma.version.update({
+      where: { id },
+      data: { status: 'review' },
+    })
+  }
+
+  async approve(id: string, userId: string, comment?: string) {
+    const version = await this.findById(id)
+
+    if (version.status !== 'review') {
+      throw new ForbiddenException('只有审核中的版本可以批准')
+    }
+
+    // Don't allow self-approval
+    if (version.authorId === userId) {
+      throw new ForbiddenException('不能批准自己提交的版本')
+    }
+
+    return this.prisma.version.update({
+      where: { id },
+      data: {
+        status: 'approved',
+      },
+    })
+  }
+
+  async reject(id: string, userId: string, comment?: string) {
+    const version = await this.findById(id)
+
+    if (version.status !== 'review') {
+      throw new ForbiddenException('只有审核中的版本可以拒绝')
+    }
+
+    return this.prisma.version.update({
+      where: { id },
+      data: {
+        status: 'rejected',
+      },
+    })
+  }
+
+  async rollback(resourceId: string, targetVersionId: string, userId: string) {
+    const targetVersion = await this.findById(targetVersionId)
+    const resource = await this.prisma.resource.findUnique({ where: { id: resourceId } })
+
+    if (!resource) {
+      throw new NotFoundException('资源不存在')
+    }
+
+    if (resource.ownerId !== userId) {
+      throw new ForbiddenException('无权回滚此资源')
+    }
+
+    // Create a new version with the target version's content
+    const latestVersion = await this.prisma.version.findFirst({
+      where: { resourceId },
+      orderBy: { createdAt: 'desc' },
+    })
+
+    let newVersion = '1.0.0'
+    if (latestVersion) {
+      const parts = latestVersion.version.split('.').map(Number)
+      parts[2] += 1
+      newVersion = parts.join('.')
+    }
+
+    return this.prisma.version.create({
+      data: {
+        resourceId,
+        version: newVersion,
+        changelog: `已回滚至版本 ${targetVersion.version}`,
+        content: (targetVersion.content as any) || {},
+        dependencies: (targetVersion.dependencies as any) || [],
+        authorId: userId,
+        status: 'draft',
+      },
+      include: {
+        author: {
+          select: {
+            id: true,
+            username: true,
+            displayName: true,
+            avatarUrl: true,
+          },
+        },
+      },
+    })
+  }
 }

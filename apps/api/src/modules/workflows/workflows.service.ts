@@ -1,15 +1,16 @@
-import { Injectable, NotFoundException } from '@nestjs/common'
+import { Injectable, NotFoundException, Logger } from '@nestjs/common'
 import { PrismaService } from '../../database/prisma/prisma.service'
+import { QueueService } from '../../common/queue/queue.service'
 import { CreateWorkflowDto, UpdateWorkflowDto } from './dto'
-import { WorkflowEngine } from './workflow-engine'
 
 @Injectable()
 export class WorkflowsService {
-  private engine: WorkflowEngine
+  private readonly logger = new Logger(WorkflowsService.name)
 
-  constructor(private prisma: PrismaService) {
-    this.engine = new WorkflowEngine(prisma)
-  }
+  constructor(
+    private prisma: PrismaService,
+    private queueService: QueueService,
+  ) {}
 
   async findAll(teamId?: string) {
     const where = teamId ? { teamId } : {}
@@ -107,27 +108,24 @@ export class WorkflowsService {
     const execution = await this.prisma.workflowExecution.create({
       data: {
         workflowId: id,
-        status: 'running',
+        status: 'pending',
         trigger: 'manual',
         inputs: inputs || {},
-        startedAt: new Date(),
       },
     })
 
-    // Execute workflow asynchronously
-    this.engine
-      .execute(
-        id,
-        execution.id,
-        (workflow.nodes as any[]) || [],
-        (workflow.edges as any[]) || [],
-        { ...(workflow.variables as Record<string, any>), ...inputs }
-      )
-      .catch((error) => {
-        console.error('Workflow execution failed:', error)
-      })
+    // Enqueue workflow for async execution via BullMQ
+    await this.queueService.addWorkflowJob({
+      workflowId: id,
+      executionId: execution.id,
+      nodes: (workflow.nodes as any[]) || [],
+      edges: (workflow.edges as any[]) || [],
+      variables: { ...(workflow.variables as Record<string, any>), ...inputs },
+    })
 
-    return execution
+    this.logger.log(`工作流 ${id} 已加入执行队列 (execution: ${execution.id})`)
+
+    return { executionId: execution.id, status: 'pending' }
   }
 
   async getExecutions(workflowId: string) {
@@ -161,10 +159,14 @@ export class WorkflowsService {
       throw new NotFoundException('执行记录不存在')
     }
 
-    if (execution.status !== 'running') {
-      return { success: false, message: '只能取消正在运行的执行' }
+    if (execution.status !== 'running' && execution.status !== 'pending') {
+      return { success: false, message: '只能取消正在运行或等待中的执行' }
     }
 
+    // Cancel the BullMQ job
+    await this.queueService.cancelWorkflowJob(executionId)
+
+    // Update execution status
     await this.prisma.workflowExecution.update({
       where: { id: executionId },
       data: {

@@ -5,29 +5,17 @@ export default {
   theme: {
     extend: {
       colors: {
-        // Apple System Colors
-        apple: {
-          blue: '#007AFF',
-          green: '#34C759',
-          indigo: '#5856D6',
-          orange: '#FF9500',
-          pink: '#FF2D55',
-          purple: '#AF52DE',
-          red: '#FF3B30',
-          teal: '#5AC8FA',
-          yellow: '#FFCC00',
-        },
-        // Apple Dark Mode Colors
-        'apple-dark': {
-          blue: '#0A84FF',
-          green: '#30D158',
-          indigo: '#5E5CE6',
-          orange: '#FF9F0A',
-          pink: '#FF375F',
-          purple: '#BF5AF2',
-          red: '#FF453A',
-          teal: '#64D2FF',
-          yellow: '#FFD60A',
+        // System Colors (RGB variables → `rgb(var(--system-blue) / <alpha-value>)` enables opacity modifiers like bg-system-blue/50)
+        system: {
+          blue: 'rgb(var(--system-blue) / <alpha-value>)',
+          green: 'rgb(var(--system-green) / <alpha-value>)',
+          indigo: 'rgb(var(--system-indigo) / <alpha-value>)',
+          orange: 'rgb(var(--system-orange) / <alpha-value>)',
+          pink: 'rgb(var(--system-pink) / <alpha-value>)',
+          purple: 'rgb(var(--system-purple) / <alpha-value>)',
+          red: 'rgb(var(--system-red) / <alpha-value>)',
+          teal: 'rgb(var(--system-teal) / <alpha-value>)',
+          yellow: 'rgb(var(--system-yellow) / <alpha-value>)',
         },
         // Background Colors
         bg: {
@@ -35,6 +23,11 @@ export default {
           secondary: 'var(--bg-secondary)',
           tertiary: 'var(--bg-tertiary)',
           elevated: 'var(--bg-elevated)',
+          grouped: 'var(--bg-grouped)',
+        },
+        // Overlay Colors
+        overlay: {
+          modal: 'var(--bg-modal-overlay)',
         },
         // Fill Colors
         fill: {

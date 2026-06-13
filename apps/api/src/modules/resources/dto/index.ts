@@ -130,4 +130,14 @@ export class QueryResourceDto {
   @Min(1)
   @Max(100)
   pageSize?: number = 20
+
+  @ApiPropertyOptional({ description: '排序字段' })
+  @IsOptional()
+  @IsString()
+  sort?: string
+
+  @ApiPropertyOptional({ description: '排序方向', enum: ['asc', 'desc'] })
+  @IsOptional()
+  @IsEnum(['asc', 'desc'])
+  order?: 'asc' | 'desc'
 }

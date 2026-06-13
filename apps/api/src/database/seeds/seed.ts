@@ -167,6 +167,148 @@ async function main() {
       status: 'published', publishedAt: new Date('2026-06-08'), starCount: 19, downloads: 67,
     },
 
+    // --- 更多提示词模板 ---
+    {
+      type: 'prompt', name: 'Git 提交信息生成器', slug: 'git-commit-generator',
+      description: '根据代码变更自动生成符合 Conventional Commits 规范的提交信息，支持中英文双语输出',
+      content: {
+        template: '# Git Commit 信息生成\n\n请根据以下代码变更，生成符合 Conventional Commits 规范的提交信息。\n\n## 变更内容\n```diff\n{diff}\n```\n\n## 要求\n- 类型：{type}（feat/fix/docs/style/refactor/test/chore/perf）\n- 范围：{scope}\n- 语言：{language}\n- 格式：<type>(<scope>): <subject>\n\n请生成中英文双语版本。',
+        variables: ['diff', 'type', 'scope', 'language'],
+        model: 'claude-haiku-4-5',
+        temperature: 0.2,
+        metadata: { usageCount: 0, category: 'git' }
+      },
+      tags: ['git', 'commit', 'conventional-commits', 'automation'], category: '开发工具',
+      visibility: 'public', ownerId: admin.id, teamId: frontendTeam.id,
+      status: 'published', publishedAt: new Date('2026-06-10'), starCount: 56, downloads: 234,
+    },
+    {
+      type: 'prompt', name: 'Pull Request 描述模板', slug: 'pr-description-template',
+      description: '根据分支变更自动生成标准化的 PR 描述，包含变更摘要、测试计划、风险评估',
+      content: {
+        template: '# PR 描述生成\n\n请根据以下信息生成一份专业的 Pull Request 描述。\n\n## 分支信息\n- 源分支：{sourceBranch}\n- 目标分支：{targetBranch}\n- 变更文件数：{filesChanged}\n\n## 变更摘要\n{changeSummary}\n\n## 要求\n请包含以下章节：\n1. 📝 变更说明\n2. 🧪 测试计划\n3. 📸 截图（如有 UI 变更）\n4. ⚠️ 风险评估\n5. 📋 检查清单',
+        variables: ['sourceBranch', 'targetBranch', 'filesChanged', 'changeSummary'],
+        model: 'claude-sonnet-4-6',
+        temperature: 0.3,
+        metadata: { usageCount: 0, category: 'git' }
+      },
+      tags: ['git', 'pull-request', 'collaboration', 'template'], category: '开发工具',
+      visibility: 'team', ownerId: zhangsan.id, teamId: frontendTeam.id,
+      status: 'published', publishedAt: new Date('2026-06-09'), starCount: 48, downloads: 189,
+    },
+    {
+      type: 'prompt', name: '发版说明生成器', slug: 'release-notes-generator',
+      description: '根据版本变更历史自动生成结构化的 Release Notes，支持 GitHub Release 格式',
+      content: {
+        template: '# Release Notes 生成\n\n请根据以下信息生成 {version} 版本的 Release Notes。\n\n## 版本信息\n- 版本号：{version}\n- 发布日期：{releaseDate}\n\n## 变更列表\n{changelog}\n\n## 要求\n- 按类型分组（🎉 新功能 / 🐛 Bug修复 / 🔧 改进 / ⚠️ 破坏性变更）\n- 每条变更一句话描述\n- 底部附上贡献者名单\n- 格式：GitHub Flavored Markdown',
+        variables: ['version', 'releaseDate', 'changelog'],
+        model: 'claude-sonnet-4-6',
+        temperature: 0.4,
+        metadata: { usageCount: 0, category: 'release' }
+      },
+      tags: ['release', 'changelog', 'versioning', 'automation'], category: 'DevOps',
+      visibility: 'public', ownerId: wangwu.id, teamId: backendTeam.id,
+      status: 'published', publishedAt: new Date('2026-06-07'), starCount: 35, downloads: 156,
+    },
+    {
+      type: 'prompt', name: '架构决策记录 (ADR)', slug: 'adr-template',
+      description: '生成标准化的架构决策记录文档，帮助团队记录和追踪关键技术决策及其背景',
+      content: {
+        template: '# 架构决策记录 (ADR)\n\n## 标题\n{title}\n\n## 状态\n{status}  <!-- proposed / accepted / deprecated / superseded -->\n\n## 背景\n{context}\n\n## 决策\n{decision}\n\n## 考虑的方案\n{consideredOptions}\n\n## 后果\n### 正面影响\n{positiveConsequences}\n\n### 负面影响\n{negativeConsequences}\n\n## 相关 ADR\n{relatedAdrs}',
+        variables: ['title', 'status', 'context', 'decision', 'consideredOptions', 'positiveConsequences', 'negativeConsequences', 'relatedAdrs'],
+        model: 'claude-opus-4-8',
+        temperature: 0.3,
+        metadata: { usageCount: 0, category: 'architecture' }
+      },
+      tags: ['architecture', 'decision-record', 'documentation', 'adr'], category: '架构设计',
+      visibility: 'public', ownerId: admin.id, teamId: aiTeam.id,
+      status: 'published', publishedAt: new Date('2026-06-03'), starCount: 72, downloads: 298,
+    },
+    {
+      type: 'prompt', name: '测试用例生成器', slug: 'test-case-generator',
+      description: '根据函数签名和业务逻辑描述，自动生成全面的单元测试和集成测试用例',
+      content: {
+        template: '# 测试用例生成\n\n请为以下代码生成全面的测试用例。\n\n## 源代码\n```{language}\n{code}\n```\n\n## 要求\n- 测试框架：{testFramework}\n- 覆盖场景：正常路径、边界条件、异常处理、性能测试\n- 每个测试用例包含：描述、输入、预期输出、断言\n\n请生成可直接运行的测试代码。',
+        variables: ['language', 'code', 'testFramework'],
+        model: 'claude-sonnet-4-6',
+        temperature: 0.2,
+        metadata: { usageCount: 0, category: 'testing' }
+      },
+      tags: ['testing', 'unit-test', 'automation', 'quality'], category: '开发工具',
+      visibility: 'team', ownerId: lisi.id, teamId: aiTeam.id,
+      status: 'published', publishedAt: new Date('2026-06-11'), starCount: 41, downloads: 178,
+    },
+    {
+      type: 'prompt', name: 'Bug 分析报告模板', slug: 'bug-analysis-report',
+      description: '结构化的 Bug 分析报告模板，帮助团队系统性地记录和分析问题',
+      content: {
+        template: '# Bug 分析报告\n\n## 基本信息\n- Bug ID: {bugId}\n- 严重程度: {severity}  <!-- critical / major / minor / trivial -->\n- 发现日期: {foundDate}\n- 发现者: {reporter}\n- 负责模块: {module}\n\n## 问题描述\n{description}\n\n## 复现步骤\n{reproSteps}\n\n## 预期行为\n{expectedBehavior}\n\n## 实际行为\n{actualBehavior}\n\n## 根因分析\n{rootCause}\n\n## 修复方案\n{fix}\n\n## 预防措施\n{prevention}',
+        variables: ['bugId', 'severity', 'foundDate', 'reporter', 'module', 'description', 'reproSteps', 'expectedBehavior', 'actualBehavior', 'rootCause', 'fix', 'prevention'],
+        model: 'claude-haiku-4-5',
+        temperature: 0.2,
+        metadata: { usageCount: 0, category: 'quality' }
+      },
+      tags: ['bug', 'quality', 'report', 'template'], category: '质量保证',
+      visibility: 'team', ownerId: zhangsan.id, teamId: frontendTeam.id,
+      status: 'published', publishedAt: new Date('2026-06-02'), starCount: 28, downloads: 112,
+    },
+    {
+      type: 'prompt', name: '周报生成助手', slug: 'weekly-report-assistant',
+      description: '根据工作记录自动生成结构化周报，支持 Markdown 和纯文本两种格式输出',
+      content: {
+        template: '# 周报生成\n\n请根据以下工作记录生成 {startDate} 至 {endDate} 的周报。\n\n## 本周工作记录\n{workLog}\n\n## 要求\n- 格式：{format}（markdown / plain）\n- 包含章节：本周完成、进行中、下周计划、风险与阻塞\n- 语言风格：{tone}（正式 /  casual）\n\n请生成专业、简洁的周报。',
+        variables: ['startDate', 'endDate', 'workLog', 'format', 'tone'],
+        model: 'claude-haiku-4-5',
+        temperature: 0.5,
+        metadata: { usageCount: 0, category: 'productivity' }
+      },
+      tags: ['report', 'weekly', 'productivity', 'communication'], category: '效率工具',
+      visibility: 'public', ownerId: admin.id, teamId: null,
+      status: 'published', publishedAt: new Date('2026-06-12'), starCount: 88, downloads: 456,
+    },
+    {
+      type: 'prompt', name: 'API 错误信息优化器', slug: 'api-error-message-optimizer',
+      description: '优化 API 错误提示信息，使其对开发者更友好且包含足够的调试信息',
+      content: {
+        template: '# API 错误信息优化\n\n请优化以下 API 错误响应，使其符合 RFC 7807 (Problem Details) 规范。\n\n## 当前错误信息\n```json\n{currentError}\n```\n\n## 接口信息\n- 端点：{endpoint}\n- 方法：{method}\n\n## 要求\n- 包含清晰的错误描述\n- 提供可操作的解决建议\n- 不泄露敏感信息（如堆栈跟踪）\n- 适合 {audience} 阅读',
+        variables: ['currentError', 'endpoint', 'method', 'audience'],
+        model: 'claude-haiku-4-5',
+        temperature: 0.3,
+        metadata: { usageCount: 0, category: 'api' }
+      },
+      tags: ['api', 'error-handling', 'developer-experience'], category: '后端开发',
+      visibility: 'team', ownerId: wangwu.id, teamId: backendTeam.id,
+      status: 'published', publishedAt: new Date('2026-06-06'), starCount: 22, downloads: 89,
+    },
+    {
+      type: 'prompt', name: '技术方案评审模板', slug: 'tech-review-template',
+      description: '系统化的技术方案评审模板，从架构、性能、安全、可维护性等维度进行评审',
+      content: {
+        template: '# 技术方案评审\n\n## 方案概述\n{proposal}\n\n## 评审维度\n\n### 1. 架构合理性\n{architectureReview}\n\n### 2. 性能评估\n{performanceReview}\n\n### 3. 安全性\n{securityReview}\n\n### 4. 可维护性\n{maintainabilityReview}\n\n### 5. 扩展性\n{scalabilityReview}\n\n### 6. 成本评估\n{costReview}\n\n## 总体评估\n- 风险等级：{riskLevel}\n- 建议：{recommendation}',
+        variables: ['proposal', 'architectureReview', 'performanceReview', 'securityReview', 'maintainabilityReview', 'scalabilityReview', 'costReview', 'riskLevel', 'recommendation'],
+        model: 'claude-opus-4-8',
+        temperature: 0.3,
+        metadata: { usageCount: 0, category: 'architecture' }
+      },
+      tags: ['review', 'architecture', 'technical-design', 'evaluation'], category: '架构设计',
+      visibility: 'team', ownerId: admin.id, teamId: aiTeam.id,
+      status: 'published', publishedAt: new Date('2026-06-04'), starCount: 45, downloads: 167,
+    },
+    {
+      type: 'prompt', name: 'Dockerfile 优化顾问', slug: 'dockerfile-optimizer',
+      description: '分析和优化 Dockerfile，减小镜像体积、提升构建速度、增强安全性',
+      content: {
+        template: '# Dockerfile 优化\n\n请分析并优化以下 Dockerfile。\n\n## 当前 Dockerfile\n```dockerfile\n{dockerfile}\n```\n\n## 优化目标\n- {optimizationGoal}\n\n## 要求\n1. 减少镜像层数\n2. 使用多阶段构建\n3. 合理利用缓存\n4. 以非 root 用户运行\n5. 添加健康检查\n\n请给出优化后的 Dockerfile 和变更说明。',
+        variables: ['dockerfile', 'optimizationGoal'],
+        model: 'claude-sonnet-4-6',
+        temperature: 0.2,
+        metadata: { usageCount: 0, category: 'devops' }
+      },
+      tags: ['docker', 'optimization', 'devops', 'container'], category: 'DevOps',
+      visibility: 'public', ownerId: wangwu.id, teamId: backendTeam.id,
+      status: 'published', publishedAt: new Date('2026-06-01'), starCount: 63, downloads: 287,
+    },
+
     // --- SKILLS (技能) ---
     {
       type: 'skill', name: 'React 组件开发技能包', slug: 'react-component-skill',
@@ -312,7 +454,11 @@ async function main() {
 
   const createdResources: any[] = []
   for (const r of resourceData) {
-    const resource = await prisma.resource.create({ data: r as any })
+    const resource = await prisma.resource.upsert({
+      where: { type_slug: { type: r.type, slug: r.slug } },
+      update: r as any,
+      create: r as any,
+    })
     createdResources.push(resource)
     console.log(`📦 ${resource.type}: ${resource.name} (⭐${resource.starCount} 📥${resource.downloads})`)
   }
@@ -326,8 +472,10 @@ async function main() {
     const versionCount = r.type === 'prompt' ? 3 : 2
     for (let v = 1; v <= versionCount; v++) {
       const patch = versionCount - v
-      await prisma.version.create({
-        data: {
+      await prisma.version.upsert({
+        where: { resourceId_version: { resourceId: r.id, version: `1.0.${patch}` } },
+        update: {},
+        create: {
           resourceId: r.id,
           version: `1.0.${patch}`,
           tag: v === versionCount ? 'latest' : undefined,
